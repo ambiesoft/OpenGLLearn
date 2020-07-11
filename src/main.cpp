@@ -104,9 +104,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 
     // Draw preparation
     float vertices[] = {
-        -0.5f, -0.5f, 0.0f,
-         0.5f, -0.5f, 0.0f,
-         0.0f,  0.5f, 0.0f
+        // positions         // colors
+         0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,   // bottom right
+        -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,   // bottom left
+         0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f    // top 
     };
 
     GLuint VBO;
@@ -121,28 +122,37 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     GL_VERIFY(glGenVertexArrays(1, &VAO));
     GL_VERIFY(glBindVertexArray(VAO));
 
+
     // needs VBO and VAO
     GL_VERIFY(glVertexAttribPointer(
         0, // location in shader
         3, // x,y,z
         GL_FLOAT,
         GL_FALSE, // normalize
-        3 * sizeof(float), // byte count of 1 vertex
+        6 * sizeof(float), // byte count of 1 vertex
         (void*)0 // offset
     ));
     GL_VERIFY(glEnableVertexAttribArray(
         0 // location in shader
     ));
 
+    // color attribute
+    GL_VERIFY(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float))));
+    GL_VERIFY(glEnableVertexAttribArray(1));
+
 
     // vertex shader
     const char* vertexShaderSource = R"(#version 330 core
-layout (location = 0) in vec3 aPos;
+layout (location = 0) in vec3 aPos;   // the position variable has attribute position 0
+layout (location = 1) in vec3 aColor; // the color variable has attribute position 1
+  
+out vec3 ourColor; // output a color to the fragment shader
 
 void main()
 {
-    gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-}
+    gl_Position = vec4(aPos, 1.0);
+    ourColor = aColor; // set ourColor to the input color we got from the vertex data
+} 
 )";
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     GL_VERIFY(glShaderSource(vertexShader,
@@ -157,11 +167,12 @@ void main()
 
     // fragment shader
     const char* fragmentShaderSource = R"(#version 330 core
-out vec4 FragColor;
-
+out vec4 FragColor;  
+in vec3 ourColor;
+  
 void main()
 {
-    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+    FragColor = vec4(ourColor, 1.0);
 }
 )";
     unsigned int fragmentShader;
@@ -178,8 +189,8 @@ void main()
     GL_VERIFY(glLinkProgram(shaderProgram));
     checkShaderLink(shaderProgram);
 
-    GL_VERIFY(glUseProgram(shaderProgram));
 
+    GL_VERIFY(glUseProgram(shaderProgram));
     GL_VERIFY(glDeleteShader(vertexShader));
     GL_VERIFY(glDeleteShader(fragmentShader));
 
@@ -195,7 +206,13 @@ void main()
         GL_VERIFY(glClear(GL_COLOR_BUFFER_BIT));
 
         // draw our first triangle
+        //float timeValue = glfwGetTime();
+        //float greenValue = (sin(timeValue) / 2.0f) + 0.5f;
+        //int vertexColorLocation = glGetUniformLocation(shaderProgram, "ourColor");
+        //assert(-1 != vertexColorLocation);
         GL_VERIFY(glUseProgram(shaderProgram));
+        //GL_VERIFY(glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f));
+
         GL_VERIFY(glBindVertexArray(VAO)); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
         GL_VERIFY(glDrawArrays(GL_TRIANGLES, 0, 3));
 
